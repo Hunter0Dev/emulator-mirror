@@ -1,0 +1,36 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pc/**"
+      - "Cargo.toml"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    paths:
+      - "pc/**"
+      - "Cargo.toml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release --locked --bin mirror-pc
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mirror-pc-windows-x64
+          path: target/release/mirror-pc.exe
+          if-no-files-found: error

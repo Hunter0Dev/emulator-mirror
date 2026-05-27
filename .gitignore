@@ -1,0 +1,33 @@
+# Rust
+/target/
+**/target/
+Cargo.lock.bak
+*.pdb
+
+# Android / Gradle
+android/**/build/
+android/**/.gradle/
+android/**/local.properties
+android/**/captures/
+android/**/.idea/
+*.apk
+*.aab
+*.dex
+*.class
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project
+/dist/
+/artifacts/
+*.log

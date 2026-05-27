@@ -1,0 +1,33 @@
+name: Android build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify android directory
+        run: test -d android && echo "android/ present — gradle scaffold pending"
+
+      # Once android/ has a Gradle project, replace the step above with:
+      # - uses: actions/setup-java@v4
+      #   with:
+      #     distribution: temurin
+      #     java-version: "17"
+      # - uses: android-actions/setup-android@v3
+      # - run: cd android && ./gradlew assembleRelease
+      # - uses: actions/upload-artifact@v4
+      #   with:
+      #     name: mirror-server-android
+      #     path: android/server/build/libs/*.jar

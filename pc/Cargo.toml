@@ -1,0 +1,8 @@
+[package]
+name = "mirror-pc"
+version = "0.0.1"
+edition = "2021"
+
+[[bin]]
+name = "mirror-pc"
+path = "src/main.rs"

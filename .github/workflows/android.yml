@@ -1,14 +1,16 @@
-name: Android build
+name: Android server jar
 
 on:
   push:
     branches: [main]
     paths:
       - "android/**"
+      - "scripts/fetch-scrcpy-server.ps1"
       - ".github/workflows/android.yml"
   pull_request:
     paths:
       - "android/**"
+      - "scripts/fetch-scrcpy-server.ps1"
   workflow_dispatch:
 
 jobs:
@@ -17,17 +19,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify android directory
-        run: test -d android && echo "android/ present — gradle scaffold pending"
+      - name: Fetch scrcpy server jar
+        shell: pwsh
+        run: pwsh -File scripts/fetch-scrcpy-server.ps1
 
-      # Once android/ has a Gradle project, replace the step above with:
-      # - uses: actions/setup-java@v4
-      #   with:
-      #     distribution: temurin
-      #     java-version: "17"
-      # - uses: android-actions/setup-android@v3
-      # - run: cd android && ./gradlew assembleRelease
-      # - uses: actions/upload-artifact@v4
-      #   with:
-      #     name: mirror-server-android
-      #     path: android/server/build/libs/*.jar
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: scrcpy-server
+          path: android/prebuilt/scrcpy-server-*
+          if-no-files-found: error

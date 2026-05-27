@@ -29,17 +29,28 @@ pub fn locate_jar() -> Result<PathBuf> {
         bail!("MIRROR_SERVER_JAR points to {p} but file does not exist");
     }
 
-    let rel = PathBuf::from(format!("android/prebuilt/scrcpy-server-v{SCRCPY_VERSION}"));
-    if rel.exists() {
-        return Ok(rel);
+    let candidates = [
+        // Next to the exe (release-bundle layout)
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join(format!("scrcpy-server-v{SCRCPY_VERSION}")))),
+        // Repo layout (dev workflow)
+        Some(PathBuf::from(format!(
+            "android/prebuilt/scrcpy-server-v{SCRCPY_VERSION}"
+        ))),
+    ];
+    for c in candidates.iter().flatten() {
+        if c.exists() {
+            return Ok(c.clone());
+        }
     }
 
     bail!(
         "scrcpy server jar not found.\n\
-         Expected at:\n  {}\n\
-         Fix: run scripts/fetch-scrcpy-server.ps1 from the repo root, or set\n\
-              MIRROR_SERVER_JAR=<path> to point at the file.",
-        rel.display()
+         Looked for `scrcpy-server-v{SCRCPY_VERSION}` next to the exe and in\n\
+         `android/prebuilt/` relative to the working directory.\n\
+         Fix: download it from the GitHub Release page, or set\n\
+              MIRROR_SERVER_JAR=<path> to point at the file."
     )
 }
 

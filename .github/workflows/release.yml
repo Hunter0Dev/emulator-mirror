@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release as (e.g. v0.0.3-test). Must already exist or be created here."
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build mirror-pc.exe
+        run: cargo build --release --locked --bin mirror-pc
+
+      - name: Fetch scrcpy server jar
+        shell: pwsh
+        run: pwsh -File scripts/fetch-scrcpy-server.ps1
+
+      - name: Stage release files
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist | Out-Null
+          Copy-Item target/release/mirror-pc.exe dist/mirror-pc.exe
+          Copy-Item android/prebuilt/scrcpy-server-v4.0 dist/scrcpy-server-v4.0
+          Get-ChildItem dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: ${{ github.event.inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/mirror-pc.exe
+            dist/scrcpy-server-v4.0
+          body: |
+            ## Downloads
+
+            - `mirror-pc.exe` — the PC client. Run from the directory where `scrcpy-server-v4.0` lives.
+            - `scrcpy-server-v4.0` — the phone-side payload. The PC client pushes this to your phone via ADB on each run; no manual install on phone.
+
+            ## How to use
+
+            1. Install [Android platform-tools](https://developer.android.com/studio/releases/platform-tools) and put `adb.exe` on `PATH`.
+            2. Enable USB debugging on your phone, plug in via USB, accept the RSA prompt.
+            3. Put `mirror-pc.exe` and `scrcpy-server-v4.0` in the same folder, or set `MIRROR_SERVER_JAR=<path>`.
+            4. Run `mirror-pc doctor` to verify, then `mirror-pc serve` to test the pipeline.
+
+            See the [README](https://github.com/Hunter0Dev/emulator-mirror#readme) for full details.

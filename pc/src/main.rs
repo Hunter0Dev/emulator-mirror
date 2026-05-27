@@ -1,7 +1,9 @@
 mod adb;
+mod server;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::time::Duration;
 
 #[derive(Parser)]
 #[command(
@@ -20,6 +22,18 @@ enum Cmd {
     Doctor,
     /// List devices visible to adb.
     Devices,
+    /// Push the scrcpy server, start it, connect, dump the first bytes.
+    ///
+    /// Smoke test that the full pipeline works end-to-end: adb push,
+    /// adb forward, app_process spawn, TCP connect, raw H.264 read.
+    Serve {
+        /// Target a specific device serial. Defaults to the only ready device.
+        #[arg(long)]
+        serial: Option<String>,
+        /// Bytes to read from the socket before exiting (proves frames flow).
+        #[arg(long, default_value_t = 4096)]
+        bytes: usize,
+    },
 }
 
 fn main() -> Result<()> {
@@ -27,6 +41,7 @@ fn main() -> Result<()> {
     match cli.cmd {
         Cmd::Doctor => doctor(),
         Cmd::Devices => devices(),
+        Cmd::Serve { serial, bytes } => serve(serial.as_deref(), bytes),
     }
 }
 
@@ -69,8 +84,17 @@ fn doctor() -> Result<()> {
         println!("           - {}", d.serial);
     }
 
+    print!("[server]   ");
+    match server::locate_jar() {
+        Ok(p) => println!("OK  {}", p.display()),
+        Err(e) => {
+            println!("FAIL  {e:#}");
+            std::process::exit(1);
+        }
+    }
+
     println!();
-    println!("Ready to mirror. (mirror command coming in a future build.)");
+    println!("Ready. Try: mirror-pc serve");
     Ok(())
 }
 
@@ -84,5 +108,35 @@ fn devices() -> Result<()> {
     for d in list {
         println!("{:<24} {}", d.serial, d.state);
     }
+    Ok(())
+}
+
+fn serve(serial: Option<&str>, bytes: usize) -> Result<()> {
+    let serial = adb::pick_device(serial)?;
+    let jar = server::locate_jar()?;
+
+    let mut running = server::start(&serial, &jar)?;
+    let data = server::read_some(&mut running.stream, bytes, Duration::from_secs(3))?;
+
+    println!();
+    println!("Read {} bytes from socket.", data.len());
+    println!("First 64 bytes (hex):");
+    for (i, chunk) in data.iter().take(256).collect::<Vec<_>>().chunks(16).enumerate() {
+        let hex: String = chunk.iter().map(|b| format!("{:02x} ", **b)).collect();
+        print!("  {:04x}  {hex}", i * 16);
+        println!();
+    }
+
+    if data.starts_with(&[0x00, 0x00, 0x00, 0x01]) || data.starts_with(&[0x00, 0x00, 0x01]) {
+        println!();
+        println!("Detected H.264 NAL start code — raw_stream is flowing. Pipeline works.");
+    } else if data.is_empty() {
+        println!();
+        println!("No data received. Likely the server failed to start. Check stderr above.");
+    } else {
+        println!();
+        println!("Got data but no H.264 NAL prefix detected. Verify scrcpy version pin.");
+    }
+
     Ok(())
 }

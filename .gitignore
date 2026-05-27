@@ -18,6 +18,7 @@ android/**/.idea/
 # IDE
 .idea/
 .vscode/
+.claude/
 *.iml
 *.swp
 *~
@@ -31,3 +32,6 @@ desktop.ini
 /dist/
 /artifacts/
 *.log
+
+# Prebuilt scrcpy server (downloaded by scripts/fetch-scrcpy-server.ps1)
+android/prebuilt/scrcpy-server-*
